@@ -145,26 +145,38 @@
         return;
       }
 
-      // Web3Forms (free): the access key in the form tells it which inbox to deliver to
-      fetch(form.action, {
+      // EmailJS (free): sends through Kais's Gmail using the "Contact Us" template
+      var EMAILJS = {
+        service_id: 'service_i8gh3lf',
+        template_id: 'template_4r7dc2n',
+        public_key: 'e5VPkC_EIAKEwKA9x'
+      };
+      var now = new Date();
+      var time = now.toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          access_key: form.elements.access_key.value,
-          subject: 'New message from your portfolio — ' + name,
-          from_name: 'Kais Alshaar Portfolio',
-          name: name,
-          email: email,
-          replyto: email,
-          message: message
+          service_id: EMAILJS.service_id,
+          template_id: EMAILJS.template_id,
+          user_id: EMAILJS.public_key,
+          template_params: {
+            name: name,
+            email: email,
+            message: message,
+            time: time
+          }
         })
       }).then(function (res) {
-        return res.json().catch(function () { return {}; }).then(function (data) {
-          if (res.ok && data.success) {
+        return res.text().then(function (text) {
+          if (res.ok) {
             form.reset();
             sentBox.hidden = false;
           } else {
-            showError((data && data.message) || 'Sorry, the message could not be sent. Please email me directly.');
+            showError(text || 'Sorry, the message could not be sent. Please email me directly.');
           }
         });
       }).catch(function () {
