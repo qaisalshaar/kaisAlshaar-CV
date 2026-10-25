@@ -136,8 +136,8 @@
       label.textContent = 'Sending…';
       errorBox.hidden = true;
 
-      // Silently drop bot submissions (the hidden _honey field is only ever filled by bots)
-      if (form.elements._honey && form.elements._honey.value) {
+      // Silently drop bot submissions (the hidden botcheck box is only ever ticked by bots)
+      if (form.elements.botcheck && form.elements.botcheck.checked) {
         form.reset();
         sentBox.hidden = false;
         submit.disabled = false;
@@ -145,29 +145,24 @@
         return;
       }
 
-      // FormSubmit (free, no account): the AJAX endpoint is the same address with /ajax/
-      var endpoint = form.action.replace('formsubmit.co/', 'formsubmit.co/ajax/');
-
-      fetch(endpoint, {
+      // Web3Forms (free): the access key in the form tells it which inbox to deliver to
+      fetch(form.action, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
+          access_key: form.elements.access_key.value,
+          subject: 'New message from your portfolio — ' + name,
+          from_name: 'Kais Alshaar Portfolio',
           name: name,
           email: email,
-          message: message,
-          _replyto: email,
-          _subject: 'New message from your portfolio — ' + name,
-          _template: 'table',
-          _captcha: 'false'
+          replyto: email,
+          message: message
         })
       }).then(function (res) {
         return res.json().catch(function () { return {}; }).then(function (data) {
-          var ok = res.ok && (data.success === true || data.success === 'true');
-          if (ok) {
+          if (res.ok && data.success) {
             form.reset();
             sentBox.hidden = false;
-          } else if (data && /activat/i.test(data.message || '')) {
-            showError('Almost ready: the site owner must activate the contact form from the confirmation email first. Please try again later or use WhatsApp.');
           } else {
             showError((data && data.message) || 'Sorry, the message could not be sent. Please email me directly.');
           }
