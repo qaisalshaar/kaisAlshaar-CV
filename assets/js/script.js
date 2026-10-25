@@ -136,23 +136,42 @@
       label.textContent = 'Sending…';
       errorBox.hidden = true;
 
-      fetch(form.action, {
+      // Silently drop bot submissions (the hidden _honey field is only ever filled by bots)
+      if (form.elements._honey && form.elements._honey.value) {
+        form.reset();
+        sentBox.hidden = false;
+        submit.disabled = false;
+        label.textContent = 'Send message';
+        return;
+      }
+
+      // FormSubmit (free, no account): the AJAX endpoint is the same address with /ajax/
+      var endpoint = form.action.replace('formsubmit.co/', 'formsubmit.co/ajax/');
+
+      fetch(endpoint, {
         method: 'POST',
-        body: new FormData(form),
-        headers: { 'Accept': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          name: name,
+          email: email,
+          message: message,
+          _replyto: email,
+          _subject: 'New message from your portfolio — ' + name,
+          _template: 'table',
+          _captcha: 'false'
+        })
       }).then(function (res) {
-        if (res.ok) {
-          form.reset();
-          sentBox.hidden = false;
-        } else {
-          return res.json().then(function (data) {
-            var msg = (data && data.errors && data.errors.map(function (x) { return x.message; }).join(', ')) ||
-              'Sorry, the message could not be sent. Please email me directly.';
-            showError(msg);
-          }, function () {
-            showError('Sorry, the message could not be sent. Please email me directly.');
-          });
-        }
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          var ok = res.ok && (data.success === true || data.success === 'true');
+          if (ok) {
+            form.reset();
+            sentBox.hidden = false;
+          } else if (data && /activat/i.test(data.message || '')) {
+            showError('Almost ready: the site owner must activate the contact form from the confirmation email first. Please try again later or use WhatsApp.');
+          } else {
+            showError((data && data.message) || 'Sorry, the message could not be sent. Please email me directly.');
+          }
+        });
       }).catch(function () {
         showError('No connection. Please check your internet and try again, or email me directly.');
       }).then(function () {
